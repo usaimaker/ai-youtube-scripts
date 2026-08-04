@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Turn Google Sheets Into A Free AI Analyst</title></head>
+<body style="font-family:system-ui,Arial;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7">
+<a href="../index.html">&larr; All scripts</a><h1>Turn Google Sheets Into A Free AI Analyst</h1>
+<p style="font-style:italic;color:#666">"Hook: Google charges up to $19.99 monthly for AI in Sheets, but there is a free path."</p>
+<div><p>Hook: Google charges up to $19.99 monthly for AI in Sheets, but there is a free path.</p>
+<h2>Why this matters</h2>
+<p>Most small teams already keep their real data in spreadsheets. Tagging, sorting, and summarizing rows eats hours every week. Free AI can do that work row by row, at zero cost.</p>
+<h2>1. Skip the paid Gemini side panel</h2>
+<p>The Gemini side panel inside Sheets requires a paid plan. Workspace Business Standard costs roughly $14 per user monthly. Google One AI Premium costs about $19.99 monthly. On a free Gmail account, that starburst icon never appears. Good news: you do not need it.</p>
+<h2>2. Grab a free Gemini API key</h2>
+<p>Open aistudio.google.com and sign in with any Google account. Click &quot;Get API key&quot;, then &quot;Create API key&quot;. No credit card is needed. Mid-2026 free limits are generous. Gemini 2.0 Flash-Lite allows 30 requests per minute and 1,500 per day. Gemini 2.5 Flash allows 10 per minute and 500 per day. Most free models handle very long context windows.</p>
+<h2>3. Wire it into Sheets with Apps Script</h2>
+<p>In your sheet, open Extensions, then Apps Script. Paste a short wrapper function that calls the Gemini endpoint. Save the project and refresh the tab. You now have a custom formula. Try =GEMINI(&quot;Classify sentiment as Positive, Negative or Neutral: &quot; &amp; B2). Drag it down the column. Hundreds of rows process while you make coffee.</p>
+<h2>4. Store the key safely and mind privacy</h2>
+<p>Never hard-code the key inside your script file. Use PropertiesService script properties instead. One small setup function saves it once. Also note a real trade-off. On the free tier, Google may use your prompts to improve models. Keep contracts, IDs, and medical records out of it.</p>
+<h2>5. Let triggers do the boring part</h2>
+<p>Apps Script supports time-driven triggers. Schedule a Monday morning sales summary automatically. Schedule a nightly unread-email digest written straight into a sheet. Everything runs on Google servers. There is no container to deploy and no hosting bill.</p>
+<h2>Automation tip</h2>
+<p>Connect a form-submit trigger to your Gemini function. Each new response gets tagged, scored, and routed before you even open the spreadsheet.</p>
+<h2>CTA</h2>
+<p>Subscribe for one practical, free AI automation you can build every single day.</p></div></body></html>
