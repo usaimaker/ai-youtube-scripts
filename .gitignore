@@ -1,0 +1,5 @@
+*.mp4
+output.mp4
+out.json
+__pycache__/
+*.pyc

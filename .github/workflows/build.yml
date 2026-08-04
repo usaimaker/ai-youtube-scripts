@@ -1,24 +1,52 @@
-name: build
+name: youtube-build
+
 on:
   push:
     branches: [master, main]
   schedule:
-    - cron: "0 10 * * *"
+    - cron: "0 14 * * *"   # 14:00 UTC, after the daily script is pushed
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      YT_PRIVACY: "public"
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python generate.py
-      - run: |
+
+      - name: Install ffmpeg + fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Install Python deps
+        run: pip install --upgrade pip pillow edge-tts
+
+      - name: Rebuild script index/feed
+        run: python generate.py
+
+      - name: Generate faceless video
+        run: python make_video.py
+
+      - name: Upload to YouTube
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: python upload_youtube.py
+
+      - name: Commit upload state
+        run: |
           git config user.email "autopilot@users.noreply.github.com"
           git config user.name "autopilot"
           git add -A
-          git commit -m "auto rebuild index/feed" || echo "no changes"
+          git reset -q output.mp4 2>/dev/null || true
+          git commit -m "auto rebuild index/feed + upload state" || echo "no changes"
           git push
