@@ -1,5 +1,8 @@
 *.mp4
 output.mp4
 out.json
+subs.srt
+bgmusic.wav
+ytvid_*/
 __pycache__/
 *.pyc
