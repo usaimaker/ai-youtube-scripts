@@ -72,6 +72,37 @@ def http_json(url, method="GET", body=None, headers=None):
         return r.read().decode(), r.headers
 
 
+def set_thumbnail(video_id, png_path, access_token):
+    """Upload a custom thumbnail via thumbnails.set (multipart/related)."""
+    url = ("https://www.googleapis.com/upload/youtube/v3/thumbnails/set"
+           f"?videoId={video_id}&upload_type=multipart")
+    boundary = "ytbthumb"
+    meta_part = (
+        f"--{boundary}\r\n"
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n'
+        '{}\r\n'
+    ).encode()
+    with open(png_path, "rb") as fh:
+        img = fh.read()
+    img_part = (
+        f"--{boundary}\r\n"
+        "Content-Type: image/png\r\n"
+        "Content-Transfer-Encoding: binary\r\n\r\n"
+    ).encode() + img + f"\r\n--{boundary}--\r\n".encode()
+    body = meta_part + img_part
+    req = urllib.request.Request(
+        url, data=body, method="POST",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": f"multipart/related; boundary={boundary}",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=120) as r:
+        resp = json.loads(r.read().decode())
+    items = resp.get("items") or []
+    return bool(items and items[0].get("thumbnail", {}).get("default"))
+
+
 def upload_video(meta, access_token, privacy):
     video_file = meta.get("video_file") or os.environ.get("OUT_VIDEO", "output.mp4")
     if not os.path.exists(video_file):
@@ -139,6 +170,16 @@ def main():
     print(f"[upload] token OK (expires_in={tok.get('expires_in')})")
 
     vid, url = upload_video(meta, at, privacy)
+
+    # custom thumbnail (highest-leverage CTR fix)
+    thumb = meta.get("thumbnail")
+    if thumb and os.path.exists(thumb):
+        try:
+            ok = set_thumbnail(vid, thumb, at)
+            print(f"[upload] thumbnail {'SET' if ok else 'FAILED'} ({thumb})")
+        except Exception as e:
+            print(f"[upload] thumbnail error (non-fatal): {e!r}")
+
     mark_uploaded(slug, vid)
     with open(UPLOADED_FILE, "w", encoding="utf-8") as fh:
         json.dump({"slug": slug, "videoId": vid, "url": url, "privacy": privacy},

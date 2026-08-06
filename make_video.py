@@ -6,7 +6,8 @@ Reads a script markdown (default: newest scripts/*.md), turns it into a
 cinematic 1080p faceless video:
 
   * 1920x1080 branding slides (consistent palette, channel watermark, chapter index)
-  * Ken Burns slow zoom on every slide (no static feel)
+  * clean static branding slides (no busy zoom — matches the look the user
+    preferred on the early videos)
   * crossfade transitions between chapters
   * burned-in subtitles synced to the real TTS word timeline (better retention)
   * low-volume royalty-free ambient background music
@@ -38,7 +39,7 @@ VOICE = os.environ.get("TTS_VOICE", "en-US-AriaNeural")
 
 W, H = 1920, 1080
 TRANSITION = 0.5          # crossfade seconds
-MAX_ZOOM = 1.10
+MAX_ZOOM = 1.0            # static slides (cleaner look per user preference)
 
 # palette
 BG_TOP = (15, 23, 42)      # slate-900
@@ -227,6 +228,40 @@ def render_slide(heading, body, idx, total, kind, out_png):
     else:
         draw.text((110, H - 70), BRAND, font=small_font, fill=(148, 163, 184))
 
+    img.save(out_png)
+
+
+def make_thumbnail(title, out_png, tw=1280, th=720):
+    """Render a bold, high-CTR 1280x720 thumbnail (no auto-frame guessing)."""
+    from PIL import Image, ImageDraw
+    img = _vgradient(tw, th, BG_TOP, BG_BOT)
+    draw = ImageDraw.Draw(img)
+
+    # left accent rail
+    draw.rectangle([0, 0, 12, th], fill=ACCENT)
+    # "100% FREE" badge (CTR hook)
+    badge_font = pick_font(30, bold=True)
+    draw.rounded_rectangle([44, 44, 250, 98], radius=14, fill=ACCENT)
+    draw.text((147, 71), "100% FREE", font=badge_font,
+              fill=(15, 23, 42), anchor="mm")
+    # title (wrapped, big bold, max 3 lines)
+    title_font = pick_font(72, bold=True)
+    lines = wrap_text(draw, title, title_font, tw - 110)
+    y = 175
+    for ln in lines[:3]:
+        draw.text((56, y), ln, font=title_font, fill=WHITE)
+        y += 80
+    # accent underline under first title line
+    if lines:
+        w = int(draw.textlength(lines[0], font=title_font))
+        draw.rectangle([56, 247, 56 + w, 255], fill=ACCENT)
+    # bottom brand
+    small_font = pick_font(28)
+    draw.text((56, th - 64), BRAND, font=small_font, fill=MUTED)
+    # play-hint glyph (top-right)
+    draw.ellipse([tw - 150, th - 150, tw - 74, th - 74], fill=ACCENT)
+    draw.polygon([(tw - 122, th - 124), (tw - 122, th - 100),
+                  (tw - 98, th - 112)], fill=(15, 23, 42))
     img.save(out_png)
 
 
@@ -521,11 +556,28 @@ def main():
         OUT_VIDEO,
     ])
 
+    # custom CTR thumbnail (highest-leverage traffic fix)
+    thumb_path = "thumbnail.png"
+    make_thumbnail(title, thumb_path)
+    print(f"[make_video] thumbnail -> {thumb_path}")
+
     # metadata
+    def _fmt_ts(s):
+        s = int(round(s))
+        h, m = divmod(s, 3600)
+        m, sec = divmod(m, 60)
+        return f"{h:02d}:{m:02d}:{sec:02d}" if h else f"{m:02d}:{sec:02d}"
+
+    chapters = "\n".join(
+        f"{_fmt_ts(starts[k])} "
+        f"{'Intro' if clips[k][3]=='intro' else ('Subscribe for a free AI workflow daily' if clips[k][3]=='outro' else clips[k][1])}"
+        for k in range(len(clips))
+    )
     slug = os.path.splitext(os.path.basename(script_path))[0]
     desc = (
         f"{hook}\n\n"
         f"{title} — an AI Nexus Daily faceless explainer.\n\n"
+        f"Chapters:\n{chapters}\n\n"
         f"Subscribe for one practical, free AI workflow every single day.\n\n"
         f"#AI #Automation #FreeTools #Productivity #AItools #tutorial"
     )
@@ -534,9 +586,11 @@ def main():
         "title": title,
         "description": desc,
         "tags": ["AI", "automation", "free tools", "productivity",
-                 "AI Nexus Daily", "faceless", "tutorial", "AI tools"],
+                 "AI Nexus Daily", "faceless", "tutorial", "AI tools",
+                 "how to", "step by step"],
         "categoryId": "28",
         "video_file": OUT_VIDEO,
+        "thumbnail": "thumbnail.png",
     }
     with open("out.json", "w", encoding="utf-8") as fh:
         json.dump(meta, fh, ensure_ascii=False, indent=2)

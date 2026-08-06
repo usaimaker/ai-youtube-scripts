@@ -48,5 +48,6 @@ jobs:
           git config user.name "autopilot"
           git add -A
           git reset -q output.mp4 2>/dev/null || true
+          git reset -q thumbnail.png 2>/dev/null || true
           git commit -m "auto rebuild index/feed + upload state" || echo "no changes"
           git push
