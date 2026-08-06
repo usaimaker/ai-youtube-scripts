@@ -92,9 +92,10 @@ def set_thumbnail(video_id, png_path, access_token):
         body = e.read().decode(errors="replace")
         raise RuntimeError(f"thumbnails.set HTTP {e.code}: {body[:500]}")
     items = resp.get("items") or []
-    if not items:
-        print(f"[thumb] DEBUG empty items. resp={json.dumps(resp)[:800]}")
-    return bool(items and items[0].get("thumbnail", {}).get("default"))
+    ok = bool(items and items[0].get("thumbnail", {}).get("default"))
+    if not ok:
+        print(f"[thumb] DEBUG resp={json.dumps(resp)[:1000]}")
+    return ok
 
 
 def upload_video(meta, access_token, privacy):
