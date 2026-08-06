@@ -92,7 +92,9 @@ def set_thumbnail(video_id, png_path, access_token):
         body = e.read().decode(errors="replace")
         raise RuntimeError(f"thumbnails.set HTTP {e.code}: {body[:500]}")
     items = resp.get("items") or []
-    ok = bool(items and items[0].get("thumbnail", {}).get("default"))
+    # YouTube returns items[0] with default/medium/high/standard/maxres
+    # directly (no nested "thumbnail" key).
+    ok = bool(items and (items[0].get("default") or items[0].get("maxres")))
     if not ok:
         print(f"[thumb] DEBUG resp={json.dumps(resp)[:1000]}")
     return ok
