@@ -73,32 +73,24 @@ def http_json(url, method="GET", body=None, headers=None):
 
 
 def set_thumbnail(video_id, png_path, access_token):
-    """Upload a custom thumbnail via thumbnails.set (multipart/related)."""
+    """Upload a custom thumbnail via thumbnails.set (media upload)."""
     url = ("https://www.googleapis.com/upload/youtube/v3/thumbnails/set"
-           f"?videoId={video_id}&upload_type=multipart")
-    boundary = "ytbthumb"
-    meta_part = (
-        f"--{boundary}\r\n"
-        'Content-Type: application/json; charset=UTF-8\r\n\r\n'
-        '{}\r\n'
-    ).encode()
+           f"?videoId={video_id}&uploadType=media")
     with open(png_path, "rb") as fh:
         img = fh.read()
-    img_part = (
-        f"--{boundary}\r\n"
-        "Content-Type: image/png\r\n"
-        "Content-Transfer-Encoding: binary\r\n\r\n"
-    ).encode() + img + f"\r\n--{boundary}--\r\n".encode()
-    body = meta_part + img_part
     req = urllib.request.Request(
-        url, data=body, method="POST",
+        url, data=img, method="POST",
         headers={
             "Authorization": f"Bearer {access_token}",
-            "Content-Type": f"multipart/related; boundary={boundary}",
+            "Content-Type": "image/png",
         },
     )
-    with urllib.request.urlopen(req, timeout=120) as r:
-        resp = json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            resp = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        raise RuntimeError(f"thumbnails.set HTTP {e.code}: {body[:500]}")
     items = resp.get("items") or []
     return bool(items and items[0].get("thumbnail", {}).get("default"))
 
