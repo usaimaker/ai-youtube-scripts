@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 """
-make_video.py — Faceless "perfect" video generator for ai-youtube-scripts.
+make_video.py — Faceless "lively" video generator for ai-youtube-scripts.
 
 Reads a script markdown (default: newest scripts/*.md), turns it into a
-cinematic 1080p faceless video:
+cinematic 1080p faceless video that is VISUAL and ALIVE:
 
-  * 1920x1080 branding slides (consistent palette, channel watermark, chapter index)
-  * clean static branding slides (no busy zoom — matches the look the user
-    preferred on the early videos)
-  * crossfade transitions between chapters
-  * burned-in subtitles synced to the real TTS word timeline (better retention)
+  * 1920x1080 "dynamic infographic" slides:
+      - gentle Ken Burns motion (slow zoom 1.0->1.12, alternating in/out)
+      - left: title + colour-dotted bullet points with keyword highlights
+      - right: a drawn icon badge (ring + rays + centre glyph) so the frame
+        is actually a PICTURE, not flat text
+      - soft glow blobs on the background for depth + life
+  * slide (left/right) transitions between chapters — livelier than fade
+  * burned-in subtitles with outline + shadow + bottom lock (readable)
   * low-volume royalty-free ambient background music
-  * animated channel intro + CTA outro
+  * animated channel intro (idea badge) + CTA outro (bell badge)
 
 Outputs output.mp4 + out.json (title/description/tags) for upload_youtube.py.
 
@@ -38,8 +41,8 @@ FFPROBE = os.environ.get("FFPROBE_BIN",
 VOICE = os.environ.get("TTS_VOICE", "en-US-AriaNeural")
 
 W, H = 1920, 1080
-TRANSITION = 0.5          # crossfade seconds
-MAX_ZOOM = 1.0            # static slides (cleaner look per user preference)
+TRANSITION = 0.6          # slide transition seconds
+MAX_ZOOM = 1.12           # gentle Ken Burns (alive, not static)
 
 # palette
 BG_TOP = (15, 23, 42)      # slate-900
@@ -122,7 +125,7 @@ def spoken_text(heading, body):
 
 
 # --------------------------------------------------------------------------- #
-# Image rendering
+# Image rendering helpers
 # --------------------------------------------------------------------------- #
 def _vgradient(w, h, top, bot):
     from PIL import Image
@@ -136,6 +139,95 @@ def _vgradient(w, h, top, bot):
         for x in range(w):
             px[x, y] = (r, g, b)
     return base
+
+
+def _draw_glow(img, cx, cy, r, color, alpha=0.12):
+    """Soft radial glow blob (depth + life)."""
+    from PIL import Image, ImageDraw
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    steps = 34
+    for i in range(steps):
+        rr = r * (i + 1) / steps
+        a = int(alpha * 255 * (1 - i / steps))
+        if a <= 0:
+            continue
+        d.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=color + (a,))
+    base = img.convert("RGBA")
+    base.alpha_composite(layer)
+    img.paste(base.convert("RGB"))
+
+
+def _split_sentences(body):
+    sents = re.split(r'(?<=[.!?])\s+|\n+', body or "")
+    out = []
+    for s in sents:
+        s = s.strip().strip('"').strip()
+        if s:
+            out.append(s)
+    return out
+
+
+def _draw_highlighted(draw, text, pos, font, hi_color):
+    """Render a sentence word-by-word; quote-wrapped or Capitalised tool
+    names get the accent colour so keywords pop (visual, not flat)."""
+    x, y = pos
+    for tok in re.split(r'(\s+)', text):
+        if not tok:
+            continue
+        if tok.isspace():
+            x += draw.textlength(tok, font=font)
+            continue
+        core = tok.strip('".,():')
+        hi = (tok.startswith('"') and tok.endswith('"')) or \
+             (len(core) >= 4 and core[0:1].isupper() and core.isalpha())
+        col = hi_color if hi else TEXT
+        # strip only outer quote markers; keep other punctuation readable
+        display = tok.strip('"')
+        draw.text((x, y), display, font=font, fill=col)
+        x += draw.textlength(tok, font=font)
+
+
+def _draw_icon_badge(draw, cx, cy, R, glyph, color):
+    """A drawn 'picture' on the right side: ring + rays + centre glyph.
+    glyph: 'num' (centre number, idx passed via color? no) | 'idea' | 'bell'."""
+    from PIL import ImageDraw
+    # rays
+    for k in range(12):
+        ang = 2 * math.pi * k / 12
+        x1 = cx + (R + 16) * math.cos(ang)
+        y1 = cy + (R + 16) * math.sin(ang)
+        x2 = cx + (R + 52) * math.cos(ang)
+        y2 = cy + (R + 52) * math.sin(ang)
+        draw.line([x1, y1, x2, y2], fill=color, width=4)
+    # rings
+    draw.ellipse([cx - R, cy - R, cx + R, cy + R], outline=color, width=10)
+    draw.ellipse([cx - R + 24, cy - R + 24, cx + R - 24, cy + R - 24],
+                 outline=color, width=3)
+    if glyph == "idea":
+        # light bulb: dome + base lines
+        br = R * 0.5
+        draw.ellipse([cx - br, cy - br - 14, cx + br, cy + br - 14],
+                     outline=WHITE, width=8)
+        draw.line([cx - 26, cy + br - 6, cx + 26, cy + br - 6],
+                  fill=WHITE, width=8)
+        draw.line([cx - 16, cy + br + 14, cx + 16, cy + br + 14],
+                  fill=WHITE, width=8)
+    elif glyph == "bell":
+        # bell: arc + clapper + top knob
+        draw.arc([cx - R * 0.55, cy - R * 0.7, cx + R * 0.55, cy + R * 0.55],
+                 20, 160, fill=WHITE, width=9)
+        draw.line([cx, cy - R * 0.7, cx, cy - R * 0.92],
+                  fill=WHITE, width=9)
+        draw.ellipse([cx - 12, cy + R * 0.5, cx + 12, cy + R * 0.74],
+                     fill=WHITE)
+    elif glyph.isdigit():
+        num_font = pick_font(140, bold=True)
+        draw.text((cx, cy), glyph, font=num_font, fill=WHITE, anchor="mm")
+    else:
+        # default: play triangle
+        draw.polygon([(cx - 40, cy - 56), (cx - 40, cy + 56),
+                      (cx + 64, cy)], fill=WHITE)
 
 
 def wrap_text(draw, text, font, max_width):
@@ -159,74 +251,80 @@ def wrap_text(draw, text, font, max_width):
 def render_slide(heading, body, idx, total, kind, out_png):
     from PIL import Image, ImageDraw
     img = _vgradient(W, H, BG_TOP, BG_BOT)
+    # soft glow blobs (depth + life)
+    _draw_glow(img, 320, 260, 560, ACCENT, 0.12)
+    _draw_glow(img, 1640, 860, 640, ACCENT2, 0.12)
     draw = ImageDraw.Draw(img)
 
-    # background faint giant index number (depth)
-    if kind == "slide":
-        big = pick_font(620, bold=True)
-        draw.text((W - 70, 40), f"{idx:02d}", font=big,
-                  fill=(255, 255, 255), anchor="ra", opacity=18)
-    # accent bar top
+    # top accent bar
     draw.rectangle([0, 0, W, 12], fill=ACCENT)
-    draw.rectangle([0, 12, 320, 22], fill=ACCENT2)
+    draw.rectangle([0, 12, 460, 26], fill=ACCENT2)
 
-    heading_font = pick_font(72, bold=True)
-    body_font = pick_font(42)
+    heading_font = pick_font(68, bold=True)
+    body_font = pick_font(38)
     small_font = pick_font(30)
 
     if kind == "intro":
-        # channel wordmark
-        brand_font = pick_font(96, bold=True)
-        draw.text((110, 250), BRAND, font=brand_font, fill=WHITE)
-        draw.rectangle([110, 372, 110 + 540, 382], fill=ACCENT)
-        hlines = wrap_text(draw, heading, heading_font, W - 220)
-        y = 470
+        brand_font = pick_font(104, bold=True)
+        draw.text((120, 220), BRAND, font=brand_font, fill=WHITE)
+        draw.rectangle([120, 360, 120 + 560, 372], fill=ACCENT)
+        hlines = wrap_text(draw, heading, heading_font, 900)
+        y = 450
         for hl in hlines[:2]:
-            draw.text((110, y), hl, font=heading_font, fill=ACCENT)
-            y += 86
-        blines = wrap_text(draw, " ".join(body or []), body_font, W - 220)
-        y += 20
+            draw.text((120, y), hl, font=heading_font, fill=ACCENT)
+            y += 84
+        blines = wrap_text(draw, " ".join(body or []), body_font, 900)
+        y += 16
         for bl in blines[:3]:
-            draw.text((110, y), bl, font=body_font, fill=TEXT)
-            y += 56
-        draw.text((110, H - 90),
+            draw.text((120, y), bl, font=body_font, fill=TEXT)
+            y += 54
+        draw.text((120, H - 96),
                   "Daily AI tools you can build for $0",
                   font=small_font, fill=MUTED)
+        _draw_icon_badge(draw, 1540, 540, 210, "idea", ACCENT)
     elif kind == "outro":
         big_font = pick_font(120, bold=True)
-        draw.text((W // 2, 300), "Subscribe", font=big_font, fill=WHITE,
+        draw.text((W // 2, 250), "Subscribe", font=big_font, fill=WHITE,
                   anchor="mm")
-        draw.rectangle([W // 2 - 160, 392, W // 2 + 160, 404], fill=ACCENT)
-        blines = wrap_text(draw, " ".join(body or []), heading_font, W - 400)
-        y = 470
+        draw.rectangle([W // 2 - 170, 348, W // 2 + 170, 360], fill=ACCENT)
+        blines = wrap_text(draw, " ".join(body or []), heading_font, W - 460)
+        y = 450
         for bl in blines[:3]:
             draw.text((W // 2, y), bl, font=heading_font, fill=ACCENT,
                       anchor="mm")
-            y += 90
-        draw.text((W // 2, H - 110),
-                  "🔔 Turn on notifications for one free AI workflow every day",
+            y += 88
+        draw.text((W // 2, H - 120),
+                  "Turn on notifications for one free AI workflow every day",
                   font=small_font, fill=MUTED, anchor="mm")
+        _draw_icon_badge(draw, W // 2, 760, 96, "bell", ACCENT2)
     else:
-        hx, hy = 110, 120
-        hlines = wrap_text(draw, heading, heading_font, W - 220)
-        y = hy
+        # chapter tag
+        tag_font = pick_font(30, bold=True)
+        draw.text((120, 92), f"STEP {idx:02d} / {total:02d}",
+                  font=tag_font, fill=ACCENT2)
+        # title
+        hlines = wrap_text(draw, heading, heading_font, 860)
+        y = 150
         for hl in hlines[:2]:
-            draw.text((hx, y), hl, font=heading_font, fill=ACCENT)
-            y += 86
-        body_txt = " ".join(body or [])
-        blines = wrap_text(draw, body_txt, body_font, W - 220)
-        by = max(y + 30, 420)
-        for bl in blines[:9]:
-            draw.text((hx, by), bl, font=body_font, fill=TEXT)
-            by += 58
+            draw.text((120, y), hl, font=heading_font, fill=WHITE)
+            y += 82
+        # bullets with highlights
+        sentences = _split_sentences(" ".join(body or []))
+        by = max(y + 34, 372)
+        for i, sent in enumerate(sentences[:4]):
+            cy = by + 18
+            dot = ACCENT if i % 2 == 0 else ACCENT2
+            draw.ellipse([132, cy - 13, 158, cy + 13], fill=dot)
+            _draw_highlighted(draw, sent, (190, by), body_font, dot)
+            by += 82
+        # right: icon badge (the "picture")
+        _draw_icon_badge(draw, 1480, 540, 220, str(idx), ACCENT)
 
-    # footer brand + chapter index
+    # footer brand
+    draw.text((120, H - 64), BRAND, font=small_font, fill=(148, 163, 184))
     if kind == "slide":
-        draw.text((110, H - 70), BRAND, font=small_font, fill=(148, 163, 184))
-        draw.text((W - 110, H - 70), f"{idx:02d} / {total:02d}",
+        draw.text((W - 120, H - 64), f"{idx:02d} / {total:02d}",
                   font=small_font, fill=MUTED, anchor="ra")
-    else:
-        draw.text((110, H - 70), BRAND, font=small_font, fill=(148, 163, 184))
 
     img.save(out_png)
 
@@ -235,6 +333,8 @@ def make_thumbnail(title, out_png, tw=1280, th=720):
     """Render a bold, high-CTR 1280x720 thumbnail (no auto-frame guessing)."""
     from PIL import Image, ImageDraw
     img = _vgradient(tw, th, BG_TOP, BG_BOT)
+    _draw_glow(img, 220, 180, 360, ACCENT, 0.16)
+    _draw_glow(img, 1120, 620, 380, ACCENT2, 0.16)
     draw = ImageDraw.Draw(img)
 
     # left accent rail
@@ -398,18 +498,20 @@ def run_ffmpeg(args):
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         raise RuntimeError(
-            f"ffmpeg failed: {' '.join(cmd[:8])}...\n{r.stderr[-1200:]}")
+            f"ffmpeg failed: {' '.join(cmd[:8])}...\n{r.stderr[-1500:]}")
     return True
 
 
-def make_clip(png, mp3, dur, out_mp4, zoom_dir):
+def make_clip(png, mp3, dur, out_mp4, motion):
+    """Gentle Ken Burns: motion>0 zoom in (1.0->MAX_ZOOM), else zoom out."""
     n = max(2, int(round(dur * 30)))
     inc = (MAX_ZOOM - 1.0) / n
-    if zoom_dir > 0:
+    if motion > 0:
         z_expr = f"min(zoom+{inc:.6f},{MAX_ZOOM:.3f})"
+        z_start = 1.0
     else:
         z_expr = f"max(zoom-{inc:.6f},1.0)"
-    z_start = MAX_ZOOM if zoom_dir < 0 else 1.0
+        z_start = MAX_ZOOM
     vf = (f"zoompan=z='if(eq(on,1),{z_start},{z_expr})'"
           f":d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
           f":s={W}x{H}:fps=30,scale={W}:{H},setsar=1")
@@ -478,8 +580,8 @@ def main():
         dur = audio_duration(mp3)
         if dur < 2.0:
             dur = 2.0
-        zoom_dir = 1 if ci % 2 == 0 else -1
-        make_clip(png, mp3, dur, seg, zoom_dir)
+        motion = 1 if ci % 2 == 0 else -1
+        make_clip(png, mp3, dur, seg, motion)
         clip_files.append(seg)
         clip_durs.append(dur)
 
@@ -519,18 +621,22 @@ def main():
         starts.append(sum(clip_durs[:k]) - k * TRANSITION)
 
     filt = []
-    # video: crossfade chain
+    # video: slide (left/right) transition chain — livelier than fade
     vlabel = "0:v"
     for k in range(1, m):
         off = starts[k]
+        trans = "slideleft" if k % 2 == 0 else "slideright"
         filt.append(
-            f"[{vlabel}][{k}:v]xfade=transition=fade:duration={TRANSITION}:"
+            f"[{vlabel}][{k}:v]xfade=transition={trans}:duration={TRANSITION}:"
             f"offset={off:.4f}[xv{k}]")
         vlabel = f"xv{k}"
-    filt.append(f"[{vlabel}]subtitles={srt_path}[vsub]")
+    sub_style = ("FontSize=34,PrimaryColour=&HFFFFFF&,"
+                "OutlineColour=&H10171F&,Outline=3,ShadowColour=&H000000&,"
+                "Shadow=1,BackColour=&H40000000&,Bold=0,Alignment=2,MarginV=70")
+    filt.append(f"[{vlabel}]subtitles={srt_path}:force_style='{sub_style}'[vsub]")
     filt.append(f"[vsub]scale={W}:{H},setsar=1[v]")
     # audio: delay each clip to its timeline position, then mix (aligned
-    # with the video crossfade overlaps). Background music mixed underneath.
+    # with the video slide overlaps). Background music mixed underneath.
     for k in range(m):
         ms = int(round(starts[k] * 1000))
         filt.append(f"[{k}:a]adelay=delays={ms}:all=1[a{k}]")
