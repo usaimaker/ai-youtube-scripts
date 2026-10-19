@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>n8n AI Agent: Build Auto Workflows (No Code)</title></head>
+<body style="font-family:system-ui,Arial;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7">
+<a href="../index.html">&larr; All scripts</a><h1>n8n AI Agent: Build Auto Workflows (No Code)</h1>
+<p style="font-style:italic;color:#666">"Hook: You don&#x27;t need to code or hire an agency to run an AI agent — n8n lets you wire one up in an afternoon, and here is the exact starter setup."</p>
+<div><p>Hook: You don&#x27;t need to code or hire an agency to run an AI agent — n8n lets you wire one up in an afternoon, and here is the exact starter setup.</p>
+<h2>Why this matters</h2>
+<p>Most &quot;AI agent&quot; tutorials either drown you in Python or sell you a $500 course. n8n is open-source, drag-and-drop, and runs the same agent pattern the paid tools use: a model, memory, and tools. Once you see the skeleton, you can automate research, content, and outreach without writing code.</p>
+<h2>1. Start from the AI Agent node</h2>
+<p>Drop the &quot;AI Agent&quot; node onto the canvas and connect a Chat Trigger so you can talk to it from a simple web chat. This node is the brain — everything else just feeds it.</p>
+<h2>2. Give it a model (free tier works)</h2>
+<p>Attach an OpenAI or Ollama chat model as the agent&#x27;s language model. Ollama runs locally and costs $0. Connect it to the agent&#x27;s dedicated &quot;chat model&quot; slot, not the main flow.</p>
+<h2>3. Add memory so it remembers</h2>
+<p>Attach a Simple Memory or Window Buffer Memory node. Without memory the agent forgets everything after one message. Five clicks, zero code.</p>
+<h2>4. Hand it tools</h2>
+<p>Connect an HTTP Request or a dedicated tool node (like a search or a Google Sheet). Tools are what turn a chatbot into an agent that actually does things.</p>
+<h2>Automation tip</h2>
+<p>Swap the chat trigger for n8n&#x27;s cron trigger to run the agent on a schedule — every morning it reads your inbox, summarizes it, and drafts replies. That is a $0 virtual assistant.</p>
+<h2>CTA</h2>
+<p>Download the free n8n desktop app, build the 4-node agent above, and ship one automation this week. Subscribe for a new no-code AI workflow every day.</p></div></body></html>
