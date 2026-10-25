@@ -1,0 +1,25 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Agent Safety Stack: Stop AI Agents Breaking Production</title></head>
+<body style="font-family:system-ui,Arial;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7">
+<a href="../index.html">&larr; All scripts</a><h1>Agent Safety Stack: Stop AI Agents Breaking Production</h1>
+<p style="font-style:italic;color:#666">"Hook: Three tools shipped this week that all solve the same problem nobody wants to admit: your AI agent will happily delete a table, install a malicious plugin, or silently return garbage, and you will not notice until it is expensive."</p>
+<div><p>Hook: Three tools shipped this week that all solve the same problem nobody wants to admit: your AI agent will happily delete a table, install a malicious plugin, or silently return garbage, and you will not notice until it is expensive.</p>
+<h2>Why this matters</h2>
+<p>The agent conversation has moved past &quot;can it do the task&quot; into &quot;can I leave it alone while it does the task.&quot; That is a different engineering problem. Every serious team hitting this wall lands on the same three failure modes: destructive actions that should never have been possible, third-party add-ons nobody vetted, and silent failures that look like success.</p>
+<p>This week delivered a tool for each one, and all three are free to start.</p>
+<h2>The three layers, bottom to top</h2>
+<h3>1. Enforce at the wire, not in the prompt</h3>
+<p>Vericto is a SQL proxy that sits between your agent and PostgreSQL or MySQL on the native wire protocol. It parses every statement into an AST, checks it against your rules, then either forwards it or returns an ordinary SQL error. A DELETE with no WHERE clause never reaches the database. Integration is a host and port change in your connection string. Source-available under FSL-1.1-ALv2: free to self-host in commercial production.</p>
+<p>The lesson is bigger than the tool. Prompt-level guardrails are advisory. A parser sitting on the wire is enforceable, and it keeps working when someone swaps the model underneath it.</p>
+<h3>2. Grade anything you install</h3>
+<p>PlugVet is an independent directory that grades Claude Code skills, Cursor and Codex plugins, and MCP servers from A to F, publishing the checks behind each grade and the assessment date. It has graded more than 11,700 entries and holds F grades back rather than listing them. Free to browse.</p>
+<p>Treat this as a ten-second first pass, not a security audit. It kills the obvious junk so you spend your reading time on the handful that matter.</p>
+<h3>3. Put a reviewer on every run</h3>
+<p>Kavela went into closed beta October 23 with a simple guarantee: agent automations that do not fail silently. Each run gets an isolated cloud computer with persistent file context, and a reviewer checks the output against a checklist you define before the run counts as complete. Fourteen-day free trial, no card.</p>
+<p>Even if you never use it, copy the pattern. Add a validation step to your existing flows that scores the output against a fixed checklist and refuses to proceed if the score is low. That single change is what turns a demo into something you can bill a client for.</p>
+<h2>The mental model</h2>
+<p>Layer your defenses by where they sit. Ask three questions in order: Can this action even reach my system? Is the thing my agent is using trustworthy? Did the last run actually do what it claimed? Wire-level rules answer the first, directories answer the second, and reviewer steps answer the third. Most teams do all three of these in prompts and none of them in infrastructure, which is why they get burned.</p>
+<h2>Automation tip</h2>
+<p>Add a blast-radius test to every new automation before you trust it. Point the agent at a throwaway database or sandbox directory, then deliberately ask it to do the worst thing it plausibly could. Watch what happens. Ninety percent of agent accidents are not model failures, they are permission failures that were never exercised in a safe environment first.</p>
+<h2>Start today</h2>
+<p>Pick the one layer you are missing. If your agent touches any database, put a proxy in front of it this week. If your agent installs plugins, spend ten minutes grading what is already running. If your flows have no validation step, add one checklist gate to the highest-consequence workflow you own. One layer this week beats a perfect architecture you never build.</p>
+<p>If you want this stack designed and shipped for your business, reach out: felovery@gmail.com. We build AI automation that runs 24/7 at zero ongoing cost.</p></div></body></html>
