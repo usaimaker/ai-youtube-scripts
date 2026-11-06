@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ai-youtube-scripts.vercel.app/sitemap.xml
