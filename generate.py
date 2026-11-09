@@ -1,5 +1,7 @@
 import os, glob, re, html
 
+QRIFY_BLOCK = '<!-- QRIFY_TRAFFIC_START -->\n<section class="qrify-tool" style="margin:32px 0;padding:18px 20px;border:1px solid #d8dee9;border-radius:12px;background:#f8fafc;color:#0f172a;font-family:system-ui,Arial,sans-serif;line-height:1.6">\n  <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;margin-bottom:8px">Free tool for readers</div>\n  <p style="margin:0 0 10px"><strong>Make a QR code in seconds &mdash; no signup, no watermark.</strong> QRify is a free browser-based QR generator with custom colours, a logo overlay and SVG export. Everything runs locally in your browser, so your links and data never leave your device.</p>\n  <p style="margin:0;font-size:14px">\n    <a href="https://qrify.dynv6.net/" rel="noopener" style="color:#0369a1">Free QR code generator</a> &nbsp;&middot;&nbsp;\n    <a href="https://qrify.dynv6.net/wifi-qr-code" rel="noopener" style="color:#0369a1">WiFi QR code</a> &nbsp;&middot;&nbsp;\n    <a href="https://qrify.dynv6.net/vcard-qr-code" rel="noopener" style="color:#0369a1">vCard QR code</a> &nbsp;&middot;&nbsp;\n    <a href="https://qrify.dynv6.net/qr-code-with-logo" rel="noopener" style="color:#0369a1">QR code with logo</a> &nbsp;&middot;&nbsp;\n    <a href="https://qrify.dynv6.net/restaurant-menu-qr-code" rel="noopener" style="color:#0369a1">Restaurant menu QR</a> &nbsp;&middot;&nbsp;\n    <a href="https://usaimaker.github.io/free-qr-code-generator.html" rel="noopener" style="color:#0369a1">Full how-to guide</a>\n  </p>\n</section>\n<!-- QRIFY_TRAFFIC_END -->'
+
 SCRIPTS = "scripts"
 
 def format_body(md):
@@ -55,3 +57,19 @@ def build():
 
 if __name__ == "__main__":
     build()
+
+# QRIFY_TRAFFIC_INJECT_START (idempotent, survives the daily rebuild)
+if __name__ == "__main__":
+    try:
+        with open("index.html", encoding="utf-8") as _qf:
+            _qh = _qf.read()
+        if "QRIFY_TRAFFIC_START" not in _qh:
+            if "</body>" in _qh:
+                _qh = _qh.replace("</body>", QRIFY_BLOCK + "\n</body>", 1)
+            else:
+                _qh = _qh + QRIFY_BLOCK
+            with open("index.html", "w", encoding="utf-8") as _qf:
+                _qf.write(_qh)
+    except Exception as _qe:
+        print("qrify inject skipped:", _qe)
+# QRIFY_TRAFFIC_INJECT_END
